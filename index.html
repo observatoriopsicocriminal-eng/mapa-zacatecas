@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-neutral-950 text-neutral-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Inteligencia Geoespacial - Observatorio Psicocriminal</title>
+    
+    <!-- Tailwind CSS para Interfaz Táctica -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Leaflet CORE CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Leaflet MarkerCluster CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+    <!-- Iconografía Profesional -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+    <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="h-full flex flex-col font-sans overflow-hidden">
+
+    <!-- PANTALLA DE CARGA INSTITUCIONAL -->
+    <div id="loader" class="fixed inset-0 bg-neutral-900 z-[9999] flex flex-col items-center justify-center space-y-4">
+        <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-yellow-500 border-neutral-700"></div>
+        <p class="text-xs tracking-widest text-neutral-400 uppercase font-mono">Sincronizando Base de Datos Analítica Zacatecas...</p>
+    </div>
+
+    <!-- PANEL SUPERIOR OPERATIVO -->
+    <header class="bg-neutral-900 border-b border-neutral-800 h-14 flex items-center justify-between px-4 z-40 shrink-0">
+        <div class="flex items-center space-x-3">
+            <div class="bg-yellow-500 text-neutral-950 p-2 rounded font-black text-xs tracking-wider">OP</div>
+            <div>
+                <h1 class="text-sm font-bold uppercase tracking-tight text-white">Mapa Psicocriminal Interactivo de Zacatecas</h1>
+                <p class="text-[10px] text-neutral-400 font-mono uppercase">Sistema de Monitoreo Territorial y Análisis Psicocriminal</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-4 font-mono text-xs">
+            <div class="flex items-center space-x-2 bg-neutral-950 border border-neutral-800 px-3 py-1 rounded">
+                <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span class="text-neutral-400 text-[10px] uppercase">Sheets Live Link</span>
+            </div>
+            <div class="text-neutral-400 text-[10px]" id="current-date">--/--/----</div>
+        </div>
+    </header>
+
+    <!-- ÁREA DE OPERACIONES (SPLIT PANEL) -->
+    <div class="flex flex-1 overflow-hidden w-full relative">
+        
+        <!-- PANEL IZQUIERDO: MONITOREO Y MÉTRICAS (30%) -->
+        <aside class="w-full md:w-[32%] bg-neutral-900 border-r border-neutral-800 flex flex-col h-full overflow-y-auto overflow-x-hidden p-4 space-y-5 shrink-0 z-40">
+            
+            <!-- CONTENEDORES KPI DE RENDIMIENTO -->
+            <section class="grid grid-cols-2 gap-2">
+                <div class="bg-neutral-950 p-3 rounded border border-neutral-800">
+                    <span class="text-[10px] uppercase tracking-wider text-neutral-400 block font-mono">Total Eventos</span>
+                    <span class="text-xl font-bold text-white tracking-tight" id="kpi-total">0</span>
+                </div>
+                <div class="bg-neutral-950 p-3 rounded border border-neutral-800">
+                    <span class="text-[10px] uppercase tracking-wider text-neutral-400 block font-mono">Alerta IIPS</span>
+                    <span class="text-sm font-bold block mt-1 px-1.5 py-0.5 rounded text-center uppercase font-mono text-neutral-950 bg-neutral-400" id="kpi-iips-badge">N/A</span>
+                </div>
+                <div class="bg-neutral-950 p-3 rounded border border-neutral-800 col-span-2">
+                    <span class="text-[10px] uppercase tracking-wider text-neutral-400 block font-mono">Foco Crítico Territorial</span>
+                    <span class="text-xs font-bold text-yellow-500 truncate block mt-0.5" id="kpi-municipio">Ninguno</span>
+                </div>
+            </section>
+
+            <!-- SELECTOR DE CAPAS GIS -->
+            <section class="bg-neutral-950 p-3 rounded border border-neutral-800">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-neutral-300 mb-3 border-b border-neutral-800 pb-1.5 font-mono"><i class="fa-solid fa-layer-group mr-2 text-yellow-500"></i>Capas Geoespaciales</h3>
+                <div class="grid grid-cols-1 gap-2 text-xs">
+                    <label class="flex items-center space-x-2 cursor-pointer text-neutral-300 hover:text-white">
+                        <input type="checkbox" id="layer-cluster" checked class="rounded border-neutral-700 bg-neutral-800 text-yellow-500 focus:ring-0">
+                        <span>Cluster de Eventos (Nodos Agrupados)</span>
+                    </label>
+                    <label class="flex items-center space-x-2 cursor-pointer text-neutral-300 hover:text-white">
+                        <input type="checkbox" id="layer-heatmap" class="rounded border-neutral-700 bg-neutral-800 text-yellow-500 focus:ring-0">
+                        <span>Heatmap Territorial (Hotspots)</span>
+                    </label>
+                </div>
+            </section>
+
+            <!-- CAPA DE FILTRADO INTEGRAL -->
+            <section class="bg-neutral-950 p-3 rounded border border-neutral-800 space-y-3">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-neutral-300 border-b border-neutral-800 pb-1.5 font-mono"><i class="fa-solid fa-filter mr-2 text-yellow-500"></i>Filtros Operativos</h3>
+                <div>
+                    <label class="text-[10px] uppercase font-mono text-neutral-400 block mb-1">Municipio</label>
+                    <select id="filter-municipio" class="w-full bg-neutral-900 border border-neutral-800 rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:border-yellow-500">
+                        <option value="ALL">Todos los Municipios</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-[10px] uppercase font-mono text-neutral-400 block mb-1">Matriz de Incidente (IIPS)</label>
+                    <select id="filter-incidente" class="w-full bg-neutral-900 border border-neutral-800 rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:border-yellow-500">
+                        <option value="ALL">Todas las variables</option>
+                        <option value="Feminicidio">Feminicidio</option>
+                        <option value="Agresión armada letal">Agresión armada letal</option>
+                        <option value="Hallazgo de persona sin vida">Hallazgo de persona sin vida</option>
+                        <option value="Agresión armada no letal">Agresión armada no letal</option>
+                        <option value="Violencia familiar">Violencia familiar</option>
+                        <option value="Suicidio">Suicidio</option>
+                        <option value="Bloqueo carretera">Bloqueo carretera</option>
+                        <option value="Narcomenudeo">Narcomenudeo</option>
+                        <option value="Incendio a bancos">Incendio a bancos</option>
+                    </select>
+                </div>
+            </section>
+
+            <!-- MODELADO DE TENDENCIAS (CHART.JS) -->
+            <section class="bg-neutral-950 p-3 rounded border border-neutral-800 flex-1 min-h-[220px] flex flex-col">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-neutral-300 mb-2 border-b border-neutral-800 pb-1.5 font-mono"><i class="fa-solid fa-chart-bar mr-2 text-yellow-500"></i>Criminodinámica Temporal</h3>
+                <div class="relative flex-1 h-full w-full">
+                    <canvas id="chart-incidencia"></canvas>
+                </div>
+            </section>
+
+            <!-- ANÁLISIS PREDICTIVO Y EXPORTACIÓN APA7 -->
+            <section class="bg-neutral-950 p-3 rounded border border-neutral-800 space-y-2.5">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-neutral-300 border-b border-neutral-800 pb-1.5 font-mono"><i class="fa-solid fa-brain mr-2 text-yellow-500"></i>Análisis Analítico</h3>
+                <div class="bg-neutral-900 p-2.5 rounded border border-neutral-800">
+                    <span class="text-[10px] font-mono uppercase text-neutral-400 tracking-wider block mb-1">Tendencia General Estimada</span>
+                    <p id="predictive-text" class="text-xs text-neutral-300 leading-relaxed font-mono">Calculando métricas relacionales del modelo...</p>
+                </div>
+                <button id="btn-reporte" class="w-full bg-yellow-500 hover:bg-yellow-600 text-neutral-950 text-xs font-bold uppercase tracking-wider py-2 px-4 rounded transition-colors flex items-center justify-center space-x-2 font-mono">
+                    <i class="fa-solid fa-file-pdf"></i>
+                    <span>Generar Reporte Institucional</span>
+                </button>
+            </section>
+        </aside>
+
+        <!-- VISOR CARTOGRÁFICO PRINCIPAL (70%) -->
+        <main class="flex-1 h-full relative z-10" id="map-container">
+            <div id="map" class="w-full h-full"></div>
+            
+            <!-- LEYENDA DEL SEMÁFORO PSICOCRIMINAL -->
+            <div class="absolute bottom-5 right-5 bg-neutral-900/90 backdrop-blur border border-neutral-800 p-3 rounded-lg shadow-2xl z-[500] max-w-xs font-mono text-[11px] space-y-2">
+                <h4 class="font-bold text-white uppercase text-center text-[10px] tracking-wider border-b border-neutral-800 pb-1 mb-1">Semáforo de Riesgo IIPS</h4>
+                <div class="flex items-center space-x-2"><span class="w-3 h-3 rounded-full bg-emerald-500 shrink-0"></span><span class="text-neutral-300">0 - 40: Estabilidad relativa</span></div>
+                <div class="flex items-center space-x-2"><span class="w-3 h-3 rounded-full bg-yellow-500 shrink-0"></span><span class="text-neutral-300">41 - 60: Riesgo controlado</span></div>
+                <div class="flex items-center space-x-2"><span class="w-3 h-3 rounded-full bg-orange-500 shrink-0"></span><span class="text-neutral-300">61 - 80: Incremento sostenido</span></div>
+                <div class="flex items-center space-x-2"><span class="w-3 h-3 rounded-full bg-red-600 shrink-0"></span><span class="text-neutral-300">80+: Alta desestabilización</span></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- DEPENDENCIAS SCRIPT DEL CORE -->
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.6.0/jspdf.plugin.autotable.min.js"></script>
+
+    <!-- INYECCIÓN DE ARQUITECTURA -->
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
