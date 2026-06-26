@@ -1,7 +1,7 @@
-// app.js - Motor GIS Analítico y Georreferenciación Nativa de Zacatecas
+// app.js - Motor GIS Adaptado a la Estructura de Prensa del Observatorio Psicocriminal
 
 document.addEventListener("DOMContentLoaded", () => {
-    // Reloj Táctico
+    // Reloj Táctico Operativo
     document.getElementById('current-date').innerText = new Date().toLocaleDateString('es-MX', {
         day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit'
     });
@@ -10,7 +10,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let rawEventsData = [];
     let chartInstance = null;
 
-    // Matriz de Pesos Criminológicos IIPS
+    // Matriz de Pesos Criminológicos IIPS adaptada a las variables del estado
     const PESOS_IIPS = {
         "Feminicidio": 5,
         "Agresión armada letal": 5,
@@ -23,7 +23,7 @@ document.addEventListener("DOMContentLoaded", () => {
         "Incendio a bancos": 2
     };
 
-    // DICCIONARIO GEOESPACIAL DE REFERENCIA (58 MUNICIPIOS DE ZACATECAS)
+    // DICCIONARIO GEOESPACIAL NATIVO DE ZACATECAS (Salvaguarda por si Latitud/Longitud vienen vacías)
     const COORDENADAS_MUNICIPIOS = {
         "Apozol": [21.4704, -103.0224], "Apulco": [21.4556, -102.6872], "Atolinga": [21.7811, -103.4739],
         "Benito Juárez": [21.5153, -103.5681], "Calera": [22.9464, -102.7042], "Cañitas de Felipe Pescador": [23.6019, -102.7247],
@@ -81,13 +81,14 @@ document.addEventListener("DOMContentLoaded", () => {
             header: true,
             skipEmptyLines: true,
             complete: function(results) {
-                rawEventsData = results.data.map(row => {
-                    const municipioNombre = row.Municipio ? row.Municipio.trim() : "Zacatecas";
+                rawEventsData = results.data.map((row, idx) => {
+                    const municipioNombre = row["Municipio"] ? row["Municipio"].trim() : "Zacatecas";
                     
-                    let lat = parseFloat(row.Latitud);
-                    let lng = parseFloat(row.Longitud);
+                    // Lee las columnas de coordenadas exactas de tu archivo
+                    let lat = parseFloat(row["Latitud"]);
+                    let lng = parseFloat(row["Longitud"]);
 
-                    // Si no existen coordenadas explícitas, el motor realiza el emparejamiento con dispersión (Jitter)
+                    // Si vienen vacías o fallan, aplica el motor de georreferenciación con Jittering
                     if (isNaN(lat) || isNaN(lng)) {
                         const coordsDefecto = COORDENADAS_MUNICIPIOS[municipioNombre];
                         if (coordsDefecto) {
@@ -99,17 +100,21 @@ document.addEventListener("DOMContentLoaded", () => {
                         }
                     }
 
+                    // Limpieza y parseo de fecha corta
+                    let fechaOriginal = row["Fecha / Hora"] || new Date().toISOString().split('T')[0];
+                    let fechaLimpia = fechaOriginal.split(" ")[0]; // Extrae solo la fecha si viene pegada la hora
+
                     return {
-                        id: row.ID || `OP-${Math.floor(Math.random() * 9000) + 1000}`,
-                        fecha: row.Fecha || new Date().toISOString().split('T')[0],
+                        id: `OP-${2000 + idx}`,
+                        fecha: fechaLimpia,
                         municipio: municipioNombre,
                         lat: lat,
                         lng: lng,
-                        tipo: row.TipoIncidente || row.Clasificacion || "Agresión armada letal",
-                        descripcion: row.Descripcion || "Incidente registrado bajo análisis psicocriminal del observatorio.",
-                        impacto: row.NivelImpacto || "Alto",
-                        victimas: parseInt(row.Victimas) || 1,
-                        fuente: row.Fuente || 'Observatorio Psicocriminal'
+                        tipo: row["Incidencia"] || "Agresión armada letal",
+                        descripcion: row["Titulo de la Noticia"] || "Registro de monitoreo territorial sin texto extenso descriptivo.",
+                        impacto: "Alto",
+                        victimas: 1, // Base por defecto por renglón de noticia
+                        fuente: row["Enlace"] || 'Prensa Monitoreada'
                     };
                 });
 
@@ -118,8 +123,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 document.getElementById('loader').classList.add('hidden');
             },
             error: function(err) {
-                console.error("Fallo de sincronización externa con Google Sheets. Comprobar permisos públicos.", err);
-                document.getElementById('loader').innerHTML = "<p class='text-red-500 font-mono text-xs'>Error de enlace con Google Sheets. Verifique la publicación del archivo.</p>";
+                console.error("Fallo crítico al sincronizar con las columnas de Google Sheets.", err);
+                document.getElementById('loader').innerHTML = "<p class='text-red-500 font-mono text-xs'>Error de mapeo. Verifique los nombres de las columnas.</p>";
             }
         });
     }
@@ -130,10 +135,12 @@ document.addEventListener("DOMContentLoaded", () => {
         select.innerHTML = '<option value="ALL">Todos los Municipios</option>';
         
         muns.forEach(m => {
-            const opt = document.createElement('option');
-            opt.value = m;
-            opt.innerText = m;
-            select.appendChild(opt);
+            if(m) {
+                const opt = document.createElement('option');
+                opt.value = m;
+                opt.innerText = m;
+                select.appendChild(opt);
+            }
         });
 
         select.addEventListener('change', processPipeline);
@@ -175,12 +182,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const popupContent = `
                 <div class="space-y-1">
-                    <div class="text-yellow-500 font-bold border-b border-neutral-700 pb-0.5 uppercase tracking-wide text-[10px]">ID: ${e.id}</div>
+                    <div class="text-yellow-500 font-bold border-b border-neutral-700 pb-0.5 uppercase tracking-wide text-[10px]">MONITOREO TERRITORIAL</div>
                     <div><strong>Fecha:</strong> ${e.fecha}</div>
                     <div><strong>Municipio:</strong> ${e.municipio}</div>
-                    <div><strong>Incidente:</strong> <span class="text-red-400">${e.tipo}</span></div>
-                    <div><strong>Víctimas:</strong> ${e.victimas}</div>
-                    <div class="text-[10px] text-neutral-400 italic mt-1 border-t border-neutral-800 pt-1">${e.descripcion}</div>
+                    <div><strong>Incidencia:</strong> <span class="text-red-400">${e.tipo}</span></div>
+                    <div class="text-[10px] text-neutral-300 mt-1 border-t border-neutral-800 pt-1 font-sans"><strong>Noticia:</strong> ${e.descripcion}</div>
+                    ${e.fuente !== 'Prensa Monitoreada' ? `<div class="mt-1"><a href="${e.fuente}" target="_blank" class="text-yellow-500 hover:underline text-[9px] font-mono">VER FUENTE ORIGINAL ↗</a></div>` : ''}
                 </div>
             `;
             marker.bindPopup(popupContent);
@@ -232,8 +239,13 @@ document.addEventListener("DOMContentLoaded", () => {
         const conteosMensuales = Array(12).fill(0);
 
         data.forEach(e => {
-            const mesIndex = new Date(e.fecha).getMonth();
-            if(!isNaN(mesIndex)) conteosMensuales[mesIndex]++;
+            if(e.fecha) {
+                const parts = e.fecha.split("-");
+                if(parts.length >= 2) {
+                    const mesIndex = parseInt(parts[1]) - 1;
+                    if(!isNaN(mesIndex) && mesIndex >= 0 && mesIndex < 12) conteosMensuales[mesIndex]++;
+                }
+            }
         });
 
         if (chartInstance) chartInstance.destroy();
@@ -281,47 +293,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         pText.innerText = analisis;
     }
-
-    document.getElementById('btn-reporte').addEventListener('click', () => {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        const currentYear = new Date().getFullYear();
-
-        doc.setFillColor(15, 15, 15);
-        doc.rect(0, 0, 210, 30, 'F');
-        
-        doc.setFont("Helvetica", "bold");
-        doc.setFontSize(14);
-        doc.setTextColor(255, 255, 255);
-        doc.text("OBSERVATORIO PSICOCRIMINAL - REPORTE DE INTELIGENCIA", 14, 15);
-        
-        doc.setFontSize(9);
-        doc.setFont("Helvetica", "italic");
-        doc.text("Sistema Territorial de Monitoreo de Violencia del Estado de Zacatecas", 14, 22);
-
-        doc.setFont("Helvetica", "normal");
-        doc.setFontSize(10);
-        doc.setTextColor(33, 33, 33);
-        doc.text(`Fecha de consulta del sistema: ${new Date().toLocaleString('es-MX')}`, 14, 40);
-        doc.text(`Total de eventos evaluados en la muestra: ${rawEventsData.length}`, 14, 46);
-
-        doc.setFont("Helvetica", "bold");
-        doc.text("LÍNEA METODOLÓGICA Y REFERENCIA INSTITUCIONAL (APA 7)", 14, 60);
-        doc.setFont("Helvetica", "normal");
-        doc.setFontSize(9);
-        const refAPA = `Observatorio Psicocriminal. (${currentYear}). Mapa Psicocriminal Interactivo del Estado de Zacatecas. Sistema de Monitoreo Territorial y Análisis Psicocriminal. Recuperado desde la infraestructura de bases analíticas de datos distribuidos del estado.`;
-        doc.text(doc.splitTextToSize(refAPA, 180), 14, 66);
-
-        doc.setFont("Helvetica", "bold");
-        doc.setFontSize(10);
-        doc.text("DIAGNÓSTICO SITUACIONAL DEL TERRITORIO", 14, 85);
-        doc.setFont("Helvetica", "normal");
-        doc.setFontSize(9);
-        const interpretacion = document.getElementById('predictive-text').innerText;
-        doc.text(doc.splitTextToSize(interpretacion, 180), 14, 91);
-
-        doc.save(`Reporte_Psicocriminal_Zacatecas_${new Date().toISOString().split('T')[0]}.pdf`);
-    });
 
     initMap();
     fetchIntelligenceData();
