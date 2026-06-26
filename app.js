@@ -1,9 +1,13 @@
 // app.js - Versión Restrictiva y de Visualización Limpia para el Observatorio Psicocriminal
 
 document.addEventListener("DOMContentLoaded", () => {
-    document.getElementById('current-date').innerText = new Date().toLocaleDateString('es-MX', {
-        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit'
-    });
+    // Blindaje por si no existe el elemento 'current-date' en el HTML
+    const dateElement = document.getElementById('current-date');
+    if (dateElement) {
+        dateElement.innerText = new Date().toLocaleDateString('es-MX', {
+            day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit'
+        });
+    }
 
     let map, markerClusterGroup, heatmapLayer;
     let rawEventsData = [];
@@ -44,11 +48,16 @@ document.addEventListener("DOMContentLoaded", () => {
             maxZoom: MAP_CONFIG.maxZoom, maxBounds: MAP_CONFIG.bounds, maxBoundsViscosity: 1.0
         });
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; CARTO' }).addTo(map);
-        markerClusterGroup = L.markerClusterGroup().addTo(map);
-        heatmapLayer = L.heatLayer([], { radius: 25, blur: 15, maxZoom: 12 }).addTo(map);
+        
+        // Verificación de existencia de plugins para evitar caídas
+        markerClusterGroup = typeof L.markerClusterGroup === 'function' ? L.markerClusterGroup().addTo(map) : L.layerGroup().addTo(map);
+        heatmapLayer = typeof L.heatLayer === 'function' ? L.heatLayer([], { radius: 25, blur: 15, maxZoom: 12 }).addTo(map) : null;
 
-        document.getElementById('layer-cluster').addEventListener('change', e => e.target.checked ? map.addLayer(markerClusterGroup) : map.removeLayer(markerClusterGroup));
-        document.getElementById('layer-heatmap').addEventListener('change', e => e.target.checked ? map.addLayer(heatmapLayer) : map.removeLayer(heatmapLayer));
+        const elCluster = document.getElementById('layer-cluster');
+        const elHeat = document.getElementById('layer-heatmap');
+        
+        if (elCluster) elCluster.addEventListener('change', e => e.target.checked ? map.addLayer(markerClusterGroup) : map.removeLayer(markerClusterGroup));
+        if (elHeat && heatmapLayer) elHeat.addEventListener('change', e => e.target.checked ? map.addLayer(heatmapLayer) : map.removeLayer(heatmapLayer));
     }
 
     function fetchIntelligenceData() {
@@ -68,9 +77,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 rawEventsData = results.data.map((row, idx) => {
                     let munRaw = row[keyMunicipio] ? row[keyMunicipio].trim() : "Guadalupe";
-                    let municipioNombre = munRaw.charAt(0).toUpperCase() + munRaw.slice(1);
+                    let municipioNombre = munRaw.charAt(0).toUpperCase() + munRaw.slice(1).toLowerCase();
 
-                    // Pasa las coordenadas por el traductor de grados a decimal
                     let lat = convertirGradosADecimal(row[keyLat]);
                     let lng = convertirGradosADecimal(row[keyLng]);
 
@@ -89,7 +97,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 populateFilters();
                 processPipeline();
-                document.getElementById('loader').classList.add('hidden');
+                const loader = document.getElementById('loader');
+                if (loader) loader.classList.add('hidden');
             }
         });
     }
@@ -97,15 +106,22 @@ document.addEventListener("DOMContentLoaded", () => {
     function populateFilters() {
         const muns = [...new Set(rawEventsData.map(e => e.municipio))].sort();
         const select = document.getElementById('filter-municipio');
+        if (!select) return;
+        
         select.innerHTML = '<option value="ALL">Todos los Municipios</option>';
         muns.forEach(m => { if(m) { const opt = document.createElement('option'); opt.value = m; opt.innerText = m; select.appendChild(opt); } });
         select.addEventListener('change', processPipeline);
-        document.getElementById('filter-incidente').addEventListener('change', processPipeline);
+        
+        const filterInc = document.getElementById('filter-incidente');
+        if (filterInc) filterInc.addEventListener('change', processPipeline);
     }
 
     function processPipeline() {
-        const selectedMun = document.getElementById('filter-municipio').value;
-        const selectedTipo = document.getElementById('filter-incidente').value;
+        const elMun = document.getElementById('filter-municipio');
+        const elTipo = document.getElementById('filter-incidente');
+        
+        const selectedMun = elMun ? elMun.value : "ALL";
+        const selectedTipo = elTipo ? elTipo.value : "ALL";
 
         const filteredData = rawEventsData.filter(e => {
             const matchMun = (selectedMun === "ALL" || e.municipio === selectedMun);
@@ -121,6 +137,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function updateMapLayers(data) {
+        if (!map) return;
         markerClusterGroup.clearLayers();
         const heatPoints = [];
 
@@ -132,13 +149,13 @@ document.addEventListener("DOMContentLoaded", () => {
                     radius: 6, fillColor: "#dc2626", color: "#ffffff", weight: 1, opacity: 0.8, fillOpacity: 0.9
                 });
 
-                // DISEÑO EXCLUSIVO EXIGIDO: Oculta noticias, enlaces y palabras clave. Solo info esencial.
+                // DISEÑO EXCLUSIVO: Formato limpio inline por si no carga Tailwind externo
                 const popupContent = `
-                    <div class="space-y-1 font-mono text-[11px]">
-                        <div class="text-red-500 font-bold border-b border-neutral-700 pb-0.5 uppercase tracking-wide text-[9px]">REGISTRO VECTORIAL</div>
+                    <div style="font-family:monospace; font-size:11px; line-height:1.4; color:#f5f5f5; background:#1f1f1f; padding:5px;">
+                        <div style="color:#ef4444; font-weight:bold; border-bottom:1px solid #404040; padding-bottom:3px; margin-bottom:5px; text-transform:uppercase; font-size:9px; letter-spacing:0.5px;">REGISTRO VECTORIAL</div>
                         <div><strong>MUNICIPIO:</strong> ${e.municipio}</div>
-                        <div><strong>INCIDENCIA:</strong> <span class="text-yellow-400 font-bold">${e.tipo}</span></div>
-                        <div class="text-[9px] text-neutral-400 border-t border-neutral-800 pt-1 mt-1">
+                        <div><strong>INCIDENCIA:</strong> <span style="color:#facc15; font-weight:bold;">${e.tipo}</span></div>
+                        <div style="font-size:9px; color:#a3a3a3; border-t:1px solid #262626; margin-top:5px; padding-top:4px;">
                             <strong>LAT:</strong> ${e.lat.toFixed(4)}<br>
                             <strong>LNG:</strong> ${e.lng.toFixed(4)}
                         </div>
@@ -148,7 +165,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 markerClusterGroup.addLayer(marker);
             }
         });
-        heatmapLayer.setLatLngs(heatPoints);
+        if (heatmapLayer) heatmapLayer.setLatLngs(heatPoints);
     }
 
     function calculateIIPS(data) {
@@ -165,11 +182,15 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function updateDashboardKPIs(data, iips) {
-        document.getElementById('kpi-total').innerText = data.length;
+        const kpiTotal = document.getElementById('kpi-total');
+        if (kpiTotal) kpiTotal.innerText = data.length;
+        
         const badge = document.getElementById('kpi-iips-badge');
         const status = getIIPSStatus(iips);
-        badge.innerText = `${iips} pts - ${status.label}`;
-        badge.className = `text-[11px] font-bold block mt-1 px-1.5 py-0.5 rounded text-center uppercase font-mono ${status.color}`;
+        if (badge) {
+            badge.innerText = `${iips} pts - ${status.label}`;
+            badge.className = `text-[11px] font-bold block mt-1 px-1.5 py-0.5 rounded text-center uppercase font-mono ${status.color}`;
+        }
 
         const counts = {};
         let maxMun = "Ninguno", maxCount = 0;
@@ -177,11 +198,14 @@ document.addEventListener("DOMContentLoaded", () => {
             counts[e.municipio] = (counts[e.municipio] || 0) + 1;
             if (counts[e.municipio] > maxCount) { maxCount = counts[e.municipio]; maxMun = e.municipio; }
         });
-        document.getElementById('kpi-municipio').innerText = maxCount > 0 ? `${maxMun} (${maxCount} ev)` : "Ninguno";
+        const kpiMun = document.getElementById('kpi-municipio');
+        if (kpiMun) kpiMun.innerText = maxCount > 0 ? `${maxMun} (${maxCount} ev)` : "Ninguno";
     }
 
     function renderCharts(data) {
-        const ctx = document.getElementById('chart-incidencia').getContext('2d');
+        const chartEl = document.getElementById('chart-incidencia');
+        if (!chartEl) return;
+        const ctx = chartEl.getContext('2d');
         const meses = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
         const conteosMensuales = Array(12).fill(0);
 
@@ -218,9 +242,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function executePredictiveAnalysis(data, iipsScore) {
         const pText = document.getElementById('predictive-text');
+        if (!pText) return;
         if (data.length === 0) { pText.innerText = "Información geoespacial insuficiente."; return; }
         const status = getIIPSStatus(iipsScore);
-        let analisis = `El territorio evalúa un escenario de '${status.label.toUpperCase()}'. `;
+        let analisis = `El territory evalúa un escenario de '${status.label.toUpperCase()}'. `;
         analisis += iipsScore > 70 ? "La concentración espacial advierte dinámicas complejas." : "El volumen de incidentes se localiza estable en nodos históricos.";
         pText.innerText = analisis;
     }
