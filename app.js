@@ -1,7 +1,6 @@
-// app.js - Motor GIS Adaptado a la Estructura de Prensa del Observatorio Psicocriminal
+// app.js - Versión Restrictiva y de Visualización Limpia para el Observatorio Psicocriminal
 
 document.addEventListener("DOMContentLoaded", () => {
-    // Reloj Táctico Operativo
     document.getElementById('current-date').innerText = new Date().toLocaleDateString('es-MX', {
         day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit'
     });
@@ -10,99 +9,73 @@ document.addEventListener("DOMContentLoaded", () => {
     let rawEventsData = [];
     let chartInstance = null;
 
-    // Matriz de Pesos Criminológicos IIPS adaptada a las variables del estado
     const PESOS_IIPS = {
-        "Feminicidio": 5,
-        "Agresión armada letal": 5,
-        "Hallazgo de persona sin vida": 5,
-        "Agresión armada no letal": 4,
-        "Violencia familiar": 4,
-        "Suicidio": 3,
-        "Bloqueo carretera": 3,
-        "Narcomenudeo": 2,
-        "Incendio a bancos": 2
+        "Feminicidio": 5, "Agresión armada letal": 5, "Hallazgo de persona sin vida": 5,
+        "Agresión armada no letal": 4, "Violencia familiar": 4, "Suicidio": 3,
+        "Bloqueo carretera": 3, "Narcomenudeo": 2, "Incendio a bancos": 2
     };
 
-    // DICCIONARIO GEOESPACIAL NATIVO DE ZACATECAS (Salvaguarda por si Latitud/Longitud vienen vacías)
-    const COORDENADAS_MUNICIPIOS = {
-        "Apozol": [21.4704, -103.0224], "Apulco": [21.4556, -102.6872], "Atolinga": [21.7811, -103.4739],
-        "Benito Juárez": [21.5153, -103.5681], "Calera": [22.9464, -102.7042], "Cañitas de Felipe Pescador": [23.6019, -102.7247],
-        "Concepción del Oro": [24.6219, -101.4172], "Cuauhtémoc": [22.4497, -102.0833], "Chalchihuites": [23.4725, -103.8822],
-        "El Salvador": [24.4719, -100.9161], "Fresnillo": [23.1749, -102.8681], "Genaro Codina": [22.4711, -102.4517],
-        "General Enrique Estrada": [22.9961, -102.7436], "General Francisco R. Murguía": [24.0253, -102.9022],
-        "General Pánfilo Natera": [22.6631, -101.6111], "Guadalupe": [22.7533, -102.5175], "Huanusco": [21.7706, -102.9719],
-        "Jalpa": [21.6369, -102.9786], "Jerez": [22.6486, -103.0011], "Jiménez del Teul": [23.2450, -103.8014],
-        "Juan Aldama": [24.2917, -103.3917], "Juchipila": [21.4089, -103.1186], "Loreto": [22.2681, -101.9892],
-        "Luis Moya": [22.4322, -102.2153], "Mazapil": [24.6419, -101.5217], "Melchor Ocampo": [24.7119, -101.6667],
-        "Mezquital del Oro": [21.2189, -103.3611], "Miguel Auza": [24.1642, -103.4442], "Momax": [21.9197, -103.3131],
-        "Monte Escobedo": [22.3028, -103.5606], "Morelos": [22.8617, -102.6106], "Moyahua de Estrada": [21.2683, -103.1594],
-        "Nochistlán de Mejía": [21.3636, -102.8444], "Noria de Ángeles": [22.4439, -101.9072], "Ojocaliente": [22.5694, -102.2536],
-        "Pánuco": [22.8986, -102.5283], "Pinos": [22.2981, -101.5750], "Río Grande": [23.8242, -103.0314],
-        "Sain Alto": [23.5825, -103.2483], "El Plateado de Joaquín Amaro": [22.0194, -103.0089], "Sombrerete": [23.6347, -103.6394],
-        "Susticacán": [22.6225, -103.1122], "Tabasco": [21.8625, -102.9111], "Tepechitlán": [22.0653, -103.3283],
-        "Tepetongo": [22.4578, -103.1492], "Teúl de González Ortega": [21.4675, -103.4611], "Tlaltenango de Sánchez Román": [21.7825, -103.3039],
-        "Trancoso": [22.7356, -102.3667], "Valparaíso": [22.7703, -103.5708], "Vetagrande": [22.8267, -102.5544],
-        "Villa de Cos": [23.2944, -102.3422], "Villa García": [22.1153, -101.9567], "Villa González Ortega": [22.5117, -101.9164],
-        "Villa Hidalgo": [22.3556, -101.7139], "Villanueva": [22.3544, -102.8853], "Zacatecas": [22.7709, -102.5832],
-        "Trinidad García de la Cadena": [21.2136, -103.4650], "Santa María de la Paz": [21.5122, -103.4072]
-    };
+    // TRADUCTOR AUTOMÁTICO: Convierte coordenadas con grados (22°45'10.0"N) a número decimal puro
+    function convertirGradosADecimal(coorStr) {
+        if (!coorStr) return NaN;
+        const stringLimpio = coorStr.trim().toUpperCase();
+        const matches = stringLimpio.match(/(\d+)°(\d+)'([\d.]+)"([NSEW])/);
+        
+        if (!matches) {
+            const numeroDirecto = parseFloat(stringLimpio);
+            return isNaN(numeroDirecto) ? NaN : numeroDirecto;
+        }
+
+        const grados = parseFloat(matches[1]);
+        const minutos = parseFloat(matches[2]);
+        const segundos = parseFloat(matches[3]);
+        const direccion = matches[4];
+
+        let decimal = grados + (minutos / 60) + (segundos / 3600);
+        if (direccion === "S" || direccion === "W") {
+            decimal = decimal * -1;
+        }
+        return decimal;
+    }
 
     function initMap() {
         map = L.map('map', {
-            center: MAP_CONFIG.center,
-            zoom: MAP_CONFIG.zoom,
-            minZoom: MAP_CONFIG.minZoom,
-            maxZoom: MAP_CONFIG.maxZoom,
-            maxBounds: MAP_CONFIG.bounds,
-            maxBoundsViscosity: 1.0
+            center: MAP_CONFIG.center, zoom: MAP_CONFIG.zoom, minZoom: MAP_CONFIG.minZoom,
+            maxZoom: MAP_CONFIG.maxZoom, maxBounds: MAP_CONFIG.bounds, maxBoundsViscosity: 1.0
         });
-
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; OpenStreetMap &copy; CARTO'
-        }).addTo(map);
-
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; CARTO' }).addTo(map);
         markerClusterGroup = L.markerClusterGroup().addTo(map);
         heatmapLayer = L.heatLayer([], { radius: 25, blur: 15, maxZoom: 12 }).addTo(map);
 
-        document.getElementById('layer-cluster').addEventListener('change', (e) => {
-            if (e.target.checked) map.addLayer(markerClusterGroup);
-            else map.removeLayer(markerClusterGroup);
-        });
-
-        document.getElementById('layer-heatmap').addEventListener('change', (e) => {
-            if (e.target.checked) map.addLayer(heatmapLayer);
-            else map.removeLayer(heatmapLayer);
-        });
+        document.getElementById('layer-cluster').addEventListener('change', e => e.target.checked ? map.addLayer(markerClusterGroup) : map.removeLayer(markerClusterGroup));
+        document.getElementById('layer-heatmap').addEventListener('change', e => e.target.checked ? map.addLayer(heatmapLayer) : map.removeLayer(heatmapLayer));
     }
 
     function fetchIntelligenceData() {
         Papa.parse(SHEET_URL, {
-            download: true,
-            header: true,
-            skipEmptyLines: true,
+            download: true, header: true, skipEmptyLines: true,
             complete: function(results) {
+                if(results.data.length === 0) return;
+                
+                const keys = Object.keys(results.data[0]);
+                const findKey = (alias) => keys.find(k => k.toLowerCase().replace(/\s/g, '').includes(alias.toLowerCase())) || "";
+
+                const keyMunicipio = findKey("municipio");
+                const keyLat = findKey("latitud");
+                const keyLng = findKey("longitud");
+                const keyIncidencia = findKey("incidencia") || findKey("incidente");
+                const keyFecha = findKey("fecha") || keys[0]; 
+
                 rawEventsData = results.data.map((row, idx) => {
-                    const municipioNombre = row["Municipio"] ? row["Municipio"].trim() : "Zacatecas";
-                    
-                    // Lee las columnas de coordenadas exactas de tu archivo
-                    let lat = parseFloat(row["Latitud"]);
-                    let lng = parseFloat(row["Longitud"]);
+                    let munRaw = row[keyMunicipio] ? row[keyMunicipio].trim() : "Guadalupe";
+                    let municipioNombre = munRaw.charAt(0).toUpperCase() + munRaw.slice(1);
 
-                    // Si vienen vacías o fallan, aplica el motor de georreferenciación con Jittering
-                    if (isNaN(lat) || isNaN(lng)) {
-                        const coordsDefecto = COORDENADAS_MUNICIPIOS[municipioNombre];
-                        if (coordsDefecto) {
-                            lat = coordsDefecto[0] + (Math.random() - 0.5) * 0.018;
-                            lng = coordsDefecto[1] + (Math.random() - 0.5) * 0.018;
-                        } else {
-                            lat = 22.7709 + (Math.random() - 0.5) * 0.1;
-                            lng = -102.5832 + (Math.random() - 0.5) * 0.1;
-                        }
-                    }
+                    // Pasa las coordenadas por el traductor de grados a decimal
+                    let lat = convertirGradosADecimal(row[keyLat]);
+                    let lng = convertirGradosADecimal(row[keyLng]);
 
-                    // Limpieza y parseo de fecha corta
-                    let fechaOriginal = row["Fecha / Hora"] || new Date().toISOString().split('T')[0];
-                    let fechaLimpia = fechaOriginal.split(" ")[0]; // Extrae solo la fecha si viene pegada la hora
+                    let fechaOriginal = row[keyFecha] || new Date().toISOString().split('T')[0];
+                    let fechaLimpia = fechaOriginal.split(" ")[0];
 
                     return {
                         id: `OP-${2000 + idx}`,
@@ -110,21 +83,13 @@ document.addEventListener("DOMContentLoaded", () => {
                         municipio: municipioNombre,
                         lat: lat,
                         lng: lng,
-                        tipo: row["Incidencia"] || "Agresión armada letal",
-                        descripcion: row["Titulo de la Noticia"] || "Registro de monitoreo territorial sin texto extenso descriptivo.",
-                        impacto: "Alto",
-                        victimas: 1, // Base por defecto por renglón de noticia
-                        fuente: row["Enlace"] || 'Prensa Monitoreada'
+                        tipo: row[keyIncidencia] ? row[keyIncidencia].trim() : "Agresión armada"
                     };
                 });
 
                 populateFilters();
                 processPipeline();
                 document.getElementById('loader').classList.add('hidden');
-            },
-            error: function(err) {
-                console.error("Fallo crítico al sincronizar con las columnas de Google Sheets.", err);
-                document.getElementById('loader').innerHTML = "<p class='text-red-500 font-mono text-xs'>Error de mapeo. Verifique los nombres de las columnas.</p>";
             }
         });
     }
@@ -133,16 +98,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const muns = [...new Set(rawEventsData.map(e => e.municipio))].sort();
         const select = document.getElementById('filter-municipio');
         select.innerHTML = '<option value="ALL">Todos los Municipios</option>';
-        
-        muns.forEach(m => {
-            if(m) {
-                const opt = document.createElement('option');
-                opt.value = m;
-                opt.innerText = m;
-                select.appendChild(opt);
-            }
-        });
-
+        muns.forEach(m => { if(m) { const opt = document.createElement('option'); opt.value = m; opt.innerText = m; select.appendChild(opt); } });
         select.addEventListener('change', processPipeline);
         document.getElementById('filter-incidente').addEventListener('change', processPipeline);
     }
@@ -169,40 +125,35 @@ document.addEventListener("DOMContentLoaded", () => {
         const heatPoints = [];
 
         data.forEach(e => {
-            heatPoints.push([e.lat, e.lng, 0.7]);
+            if (!isNaN(e.lat) && !isNaN(e.lng)) {
+                heatPoints.push([e.lat, e.lng, 0.7]);
+                
+                const marker = L.circleMarker([e.lat, e.lng], {
+                    radius: 6, fillColor: "#dc2626", color: "#ffffff", weight: 1, opacity: 0.8, fillOpacity: 0.9
+                });
 
-            const marker = L.circleMarker([e.lat, e.lng], {
-                radius: 6,
-                fillColor: "#dc2626",
-                color: "#ffffff",
-                weight: 1,
-                opacity: 0.8,
-                fillOpacity: 0.9
-            });
-
-            const popupContent = `
-                <div class="space-y-1">
-                    <div class="text-yellow-500 font-bold border-b border-neutral-700 pb-0.5 uppercase tracking-wide text-[10px]">MONITOREO TERRITORIAL</div>
-                    <div><strong>Fecha:</strong> ${e.fecha}</div>
-                    <div><strong>Municipio:</strong> ${e.municipio}</div>
-                    <div><strong>Incidencia:</strong> <span class="text-red-400">${e.tipo}</span></div>
-                    <div class="text-[10px] text-neutral-300 mt-1 border-t border-neutral-800 pt-1 font-sans"><strong>Noticia:</strong> ${e.descripcion}</div>
-                    ${e.fuente !== 'Prensa Monitoreada' ? `<div class="mt-1"><a href="${e.fuente}" target="_blank" class="text-yellow-500 hover:underline text-[9px] font-mono">VER FUENTE ORIGINAL ↗</a></div>` : ''}
-                </div>
-            `;
-            marker.bindPopup(popupContent);
-            markerClusterGroup.addLayer(marker);
+                // DISEÑO EXCLUSIVO EXIGIDO: Oculta noticias, enlaces y palabras clave. Solo info esencial.
+                const popupContent = `
+                    <div class="space-y-1 font-mono text-[11px]">
+                        <div class="text-red-500 font-bold border-b border-neutral-700 pb-0.5 uppercase tracking-wide text-[9px]">REGISTRO VECTORIAL</div>
+                        <div><strong>MUNICIPIO:</strong> ${e.municipio}</div>
+                        <div><strong>INCIDENCIA:</strong> <span class="text-yellow-400 font-bold">${e.tipo}</span></div>
+                        <div class="text-[9px] text-neutral-400 border-t border-neutral-800 pt-1 mt-1">
+                            <strong>LAT:</strong> ${e.lat.toFixed(4)}<br>
+                            <strong>LNG:</strong> ${e.lng.toFixed(4)}
+                        </div>
+                    </div>
+                `;
+                marker.bindPopup(popupContent);
+                markerClusterGroup.addLayer(marker);
+            }
         });
-
         heatmapLayer.setLatLngs(heatPoints);
     }
 
     function calculateIIPS(data) {
         let scoreTotal = 0;
-        data.forEach(e => {
-            const peso = PESOS_IIPS[e.tipo] || 1;
-            scoreTotal += (1 * peso); 
-        });
+        data.forEach(e => { scoreTotal += (1 * (PESOS_IIPS[e.tipo] || 1)); });
         return scoreTotal;
     }
 
@@ -215,7 +166,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function updateDashboardKPIs(data, iips) {
         document.getElementById('kpi-total').innerText = data.length;
-
         const badge = document.getElementById('kpi-iips-badge');
         const status = getIIPSStatus(iips);
         badge.innerText = `${iips} pts - ${status.label}`;
@@ -225,10 +175,7 @@ document.addEventListener("DOMContentLoaded", () => {
         let maxMun = "Ninguno", maxCount = 0;
         data.forEach(e => {
             counts[e.municipio] = (counts[e.municipio] || 0) + 1;
-            if (counts[e.municipio] > maxCount) {
-                maxCount = counts[e.municipio];
-                maxMun = e.municipio;
-            }
+            if (counts[e.municipio] > maxCount) { maxCount = counts[e.municipio]; maxMun = e.municipio; }
         });
         document.getElementById('kpi-municipio').innerText = maxCount > 0 ? `${maxMun} (${maxCount} ev)` : "Ninguno";
     }
@@ -249,24 +196,17 @@ document.addEventListener("DOMContentLoaded", () => {
         });
 
         if (chartInstance) chartInstance.destroy();
-
         chartInstance = new Chart(ctx, {
             type: 'line',
             data: {
                 labels: meses,
                 datasets: [{
-                    label: 'Incidencia Territorial',
-                    data: conteosMensuales,
-                    borderColor: '#eab308',
-                    backgroundColor: 'rgba(234, 179, 8, 0.05)',
-                    borderWidth: 2,
-                    tension: 0.3,
-                    fill: true
+                    label: 'Incidencia', data: conteosMensuales, borderColor: '#eab308',
+                    backgroundColor: 'rgba(234, 179, 8, 0.05)', borderWidth: 2, tension: 0.3, fill: true
                 }]
             },
             options: {
-                responsive: true,
-                maintainAspectRatio: false,
+                responsive: true, maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
                 scales: {
                     x: { ticks: { color: '#a3a3a3', font: { size: 9, family: 'monospace' } }, grid: { color: '#262626' } },
@@ -278,19 +218,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function executePredictiveAnalysis(data, iipsScore) {
         const pText = document.getElementById('predictive-text');
-        if (data.length === 0) {
-            pText.innerText = "Información geoespacial insuficiente para calcular modelos relacionales.";
-            return;
-        }
-
+        if (data.length === 0) { pText.innerText = "Información geoespacial insuficiente."; return; }
         const status = getIIPSStatus(iipsScore);
         let analisis = `El territorio evalúa un escenario de '${status.label.toUpperCase()}'. `;
-        
-        if (iipsScore > 70) {
-            analisis += "La concentración espacial advierte dinámicas complejas de riesgo psicocriminal. Se requiere monitoreo de vectores de dispersión en zonas colindantes.";
-        } else {
-            analisis += "El volumen de incidentes se localiza estable en los nodos históricos de contención urbana y ejes viales principales.";
-        }
+        analisis += iipsScore > 70 ? "La concentración espacial advierte dinámicas complejas." : "El volumen de incidentes se localiza estable en nodos históricos.";
         pText.innerText = analisis;
     }
 
