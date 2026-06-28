@@ -20,10 +20,9 @@
 <body class="h-full flex flex-col font-sans overflow-hidden">
 
     <!-- PANTALLA DE CARGA INSTITUCIONAL -->
-    <div id="loader" class="fixed inset-0 bg-neutral-900 z-[9999] flex flex-col items-center justify-center space-y-4">
-        <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-yellow-500 border-neutral-700"></div>
-        <p class="text-xs tracking-widest text-neutral-400 uppercase font-mono">Sincronizando Base de Datos Analítica Zacatecas...</p>
-    </div>
+<div id="loader"
+     class="fixed inset-0 bg-neutral-900 z-[9999] flex flex-col items-center justify-center space-y-4"
+     style="display:flex;">
 
     <!-- PANEL SUPERIOR OPERATIVO -->
     <header class="bg-neutral-900 border-b border-neutral-800 h-14 flex items-center justify-between px-4 z-40 shrink-0">
@@ -143,18 +142,86 @@
         </main>
     </div>
 
-    <!-- DEPENDENCIAS SCRIPT DEL CORE -->
-    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
-    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.6.0/jspdf.plugin.autotable.min.js"></script>
+<!-- ========================= -->
+<!-- DEPENDENCIAS -->
+<!-- ========================= -->
 
-    <!-- INYECCIÓN DE ARQUITECTURA -->
-    <script src="config.js"></script>
-    <script src="app.js"></script>
+<script defer src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+
+<script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script defer src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+
+<script defer src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
+<script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.6.0/jspdf.plugin.autotable.min.js"></script>
+
+<!-- ========================= -->
+<!-- CONFIGURACIÓN -->
+<!-- ========================= -->
+
+<script defer src="config.js"></script>
+
+<script defer src="app.js"></script>
+
+<!-- ========================= -->
+<!-- DIAGNÓSTICO -->
+<!-- ========================= -->
+
+<script>
+
+window.addEventListener("load",()=>{
+
+    console.log("========== OBSERVATORIO ==========");
+
+    console.log("Leaflet:",typeof L);
+
+    console.log("PapaParse:",typeof Papa);
+
+    console.log("Chart:",typeof Chart);
+
+    console.log("MAP_CONFIG:",typeof MAP_CONFIG);
+
+    console.log("SHEET_URL:",typeof SHEET_URL);
+
+    console.log("=================================");
+
+});
+
+window.onerror=function(msg,url,line,col,error){
+
+    console.error("ERROR GLOBAL");
+
+    console.error(msg);
+
+    console.error(url);
+
+    console.error(line);
+
+    console.error(col);
+
+    console.error(error);
+
+    const loader=document.getElementById("loader");
+
+    if(loader){
+
+        loader.style.display="none";
+
+    }
+
+};
+
+</script>
+
+</body>
+
+</html>
 </body>
 </html>
