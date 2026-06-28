@@ -27,51 +27,69 @@ function initMap() {
         ).addTo(map);
 
         markerClusterGroup =
-            typeof L.markerClusterGroup === "function"
-                ? L.markerClusterGroup().addTo(map)
-                : L.layerGroup().addTo(map);
+            (typeof L.markerClusterGroup === "function")
+                ? L.markerClusterGroup()
+                : L.layerGroup();
+
+        markerClusterGroup.addTo(map);
 
         heatmapLayer =
-            typeof L.heatLayer === "function"
+            (typeof L.heatLayer === "function")
                 ? L.heatLayer([], {
-                    radius:25,
-                    blur:15,
-                    maxZoom:12
-                }).addTo(map)
+                    radius: 25,
+                    blur: 15,
+                    maxZoom: 12
+                })
                 : null;
 
-        const elCluster=document.getElementById("layer-cluster");
-        const elHeat=document.getElementById("layer-heatmap");
+        if (heatmapLayer) {
+            heatmapLayer.addTo(map);
+        }
 
-        if(elCluster){
+        const elCluster = document.getElementById("layer-cluster");
+        const elHeat = document.getElementById("layer-heatmap");
 
-            elCluster.addEventListener("change",e=>{
+        if (elCluster) {
 
-                e.target.checked
-                    ? map.addLayer(markerClusterGroup)
-                    : map.removeLayer(markerClusterGroup);
+            elCluster.addEventListener("change", (e) => {
+
+                if (e.target.checked) {
+                    map.addLayer(markerClusterGroup);
+                } else {
+                    map.removeLayer(markerClusterGroup);
+                }
 
             });
 
         }
 
-        if(elHeat && heatmapLayer){
+        if (elHeat && heatmapLayer) {
 
-            elHeat.addEventListener("change",e=>{
+            elHeat.addEventListener("change", (e) => {
 
-                e.target.checked
-                    ? map.addLayer(heatmapLayer)
-                    : map.removeLayer(heatmapLayer);
+                if (e.target.checked) {
+                    map.addLayer(heatmapLayer);
+                } else {
+                    map.removeLayer(heatmapLayer);
+                }
 
             });
 
         }
+
+        // 🔥 BLOQUEO CRÍTICO EVITADO: asegurar mapa listo
+        window.__MAP_READY__ = true;
+
+        console.log("Mapa inicializado correctamente");
 
     }
 
-    catch(err){
+    catch (err) {
 
-        console.error(err);
+        console.error("Error en initMap():", err);
+
+        // evita loader infinito si algo falla
+        window.__MAP_READY__ = false;
 
     }
 
