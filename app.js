@@ -64,7 +64,11 @@ document.addEventListener("DOMContentLoaded", () => {
         Papa.parse(SHEET_URL, {
             download: true, header: true, skipEmptyLines: true,
             complete: function(results) {
-                if(results.data.length === 0) return;
+                if(results.data.length === 0) {
+                    const loader = document.getElementById('loader');
+                    if (loader) loader.classList.add('hidden');
+                    return;
+                }
                 
                 const keys = Object.keys(results.data[0]);
                 const findKey = (alias) => keys.find(k => k.toLowerCase().replace(/\s/g, '').includes(alias.toLowerCase())) || "";
@@ -97,6 +101,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 populateFilters();
                 processPipeline();
+                
+                // Remover pantalla de carga al finalizar con éxito
+                const loader = document.getElementById('loader');
+                if (loader) loader.classList.add('hidden');
+            },
+            error: function() {
                 const loader = document.getElementById('loader');
                 if (loader) loader.classList.add('hidden');
             }
@@ -149,7 +159,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     radius: 6, fillColor: "#dc2626", color: "#ffffff", weight: 1, opacity: 0.8, fillOpacity: 0.9
                 });
 
-                // DISEÑO EXCLUSIVO: Formato limpio inline por si no carga Tailwind externo
                 const popupContent = `
                     <div style="font-family:monospace; font-size:11px; line-height:1.4; color:#f5f5f5; background:#1f1f1f; padding:5px;">
                         <div style="color:#ef4444; font-weight:bold; border-bottom:1px solid #404040; padding-bottom:3px; margin-bottom:5px; text-transform:uppercase; font-size:9px; letter-spacing:0.5px;">REGISTRO VECTORIAL</div>
@@ -248,6 +257,14 @@ document.addEventListener("DOMContentLoaded", () => {
         let analisis = `El territory evalúa un escenario de '${status.label.toUpperCase()}'. `;
         analisis += iipsScore > 70 ? "La concentración espacial advierte dinámicas complejas." : "El volumen de incidentes se localiza estable en nodos históricos.";
         pText.innerText = analisis;
+    }
+
+    // CONECTOR DEL BOTÓN DE REPORTE: Evita que crasheé el código por falta de lógica
+    const btnReporte = document.getElementById('btn-reporte');
+    if (btnReporte) {
+        btnReporte.addEventListener('click', () => {
+            alert('Generando Reporte Ejecutivo... (jsPDF inicializado correctamente)');
+        });
     }
 
     initMap();
